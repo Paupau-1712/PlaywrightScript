@@ -1,0 +1,19 @@
+{
+  "name": "use_typescript2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^24.10.0",
+    "chromedriver": "^142.0.1"
+  },
+  "dependencies": {
+    "selenium-webdriver": "^4.38.0",
+    "xlsx": "^0.18.5"
+  }
+}
