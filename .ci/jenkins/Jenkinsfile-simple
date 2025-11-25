@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Using local workspace...'
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                dir('/Users/paupau/Desktop/Coding-Projects/Playwright/Laut_Paul_ProjectFolder/PlaywrightScript') {
+                    sh '''
+                        echo "Installing dependencies..."
+                        npm install
+                    '''
+                }
+            }
+        }
+        
+        stage('Install Playwright') {
+            steps {
+                dir('/Users/paupau/Desktop/Coding-Projects/Playwright/Laut_Paul_ProjectFolder/PlaywrightScript') {
+                    sh '''
+                        echo "Installing Playwright browsers..."
+                        npx playwright install chromium
+                    '''
+                }
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                dir('/Users/paupau/Desktop/Coding-Projects/Playwright/Laut_Paul_ProjectFolder/PlaywrightScript') {
+                    sh '''
+                        echo "Running Playwright tests..."
+                        npm test
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Test execution completed'
+            
+            // Archive test results
+            archiveArtifacts artifacts: 'playwright-report/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'report-summary/summaries/*.html', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'screenshots/**/*.png', allowEmptyArchive: true
+            
+            // Publish HTML report
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'playwright-report',
+                reportFiles: 'index.html',
+                reportName: 'Playwright Test Report'
+            ])
+        }
+        
+        success {
+            echo '✅ All tests passed!'
+        }
+        
+        failure {
+            echo '❌ Tests failed! Check the reports.'
+        }
+    }
+}

@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Check Environment') {
+            steps {
+                sh '''
+                    echo "=== Environment Check ==="
+                    echo "Node version:"
+                    node --version || echo "Node not found"
+                    echo "NPM version:"
+                    npm --version || echo "NPM not found"
+                    echo "Current directory:"
+                    pwd
+                    echo "========================"
+                '''
+            }
+        }
+        
+        stage('Navigate to Project') {
+            steps {
+                sh '''
+                    cd /Users/paupau/Desktop/Coding-Projects/Playwright/Laut_Paul_ProjectFolder/PlaywrightScript
+                    echo "Project directory contents:"
+                    ls -la
+                '''
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    cd /Users/paupau/Desktop/Coding-Projects/Playwright/Laut_Paul_ProjectFolder/PlaywrightScript
+                    npm test
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline completed'
+        }
+    }
+}

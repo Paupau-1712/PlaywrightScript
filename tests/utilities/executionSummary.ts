@@ -130,6 +130,22 @@ export class ExecutionSummary {
   }
 
   /**
+   * Check if there are any failed test cases
+   */
+  hasFailures(): boolean {
+    const testCases = Array.from(this.testCases.values());
+    return testCases.some(tc => tc.status === 'failed');
+  }
+
+  /**
+   * Get count of failed test cases
+   */
+  getFailedCount(): number {
+    const testCases = Array.from(this.testCases.values());
+    return testCases.filter(tc => tc.status === 'failed').length;
+  }
+
+  /**
    * Print summary to console with beautiful formatting
    */
   printSummary(): void {

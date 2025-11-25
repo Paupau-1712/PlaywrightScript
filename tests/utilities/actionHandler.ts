@@ -1,6 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { rowStep } from './excelColumns';
 import { ExecutionSummary } from './executionSummary';
+import * as XLSX from 'xlsx';
 
 // Import Node.js standard modules
 import * as fs from 'fs';
@@ -11,17 +12,27 @@ export class actionHandler {
   public currentSheetName: string;
   public baseScreenshotDir: string;
   public executionSummary?: ExecutionSummary;
+  public excelFilePath: string;
 
 
-  constructor(page: Page, sheetName: string, executionSummary?: ExecutionSummary) {
+  constructor(
+    page: Page, 
+    sheetName: string, 
+    executionSummary?: ExecutionSummary,
+    excelFilePath: string = "tests/testScript/TestTemplatev2.xlsx"
+  ) {
     this.page = page;
-    this.currentSheetName= sheetName;
+    this.currentSheetName = sheetName;
     this.executionSummary = executionSummary;
+    this.excelFilePath = excelFilePath;
 
-    const today = new Date().toISOString().split('T')[0]; // e.g., 2025-11-09
+    const today = new Date().toISOString().split('T')[0];
     this.baseScreenshotDir = path.join('screenshots', today, this.currentSheetName);
 
-    // ✅ Create folder if not exists
+    this.ensureScreenshotDirectoryExists();
+  }
+
+  private ensureScreenshotDirectoryExists(): void {
     if (!fs.existsSync(this.baseScreenshotDir)) {
       fs.mkdirSync(this.baseScreenshotDir, { recursive: true });
     }
@@ -67,9 +78,144 @@ export class actionHandler {
     }
   }
 
-  // async getModuleName(moduleName: string) {
-  //   console.log(`Accessing module: ${moduleName}`);
-  // }
+  /**
+   * Get and execute module steps from the Module sheet
+   * @param moduleName - The name of the module to execute
+   * @param excelFilePath - Path to the Excel file containing the Module sheet
+   */
+  async getModule(moduleName: string, excelFilePath: string): Promise<void> {
+    console.log(`\n📦 Loading module: "${moduleName}"`);
+    
+    try {
+      // Read the Excel file
+      const workbook = XLSX.readFile(excelFilePath);
+      
+      // Check if Module sheet exists
+      if (!workbook.SheetNames.includes('Module')) {
+        throw new Error(`Module sheet not found in Excel file: ${excelFilePath}`);
+      }
+      
+      // Read the Module sheet
+      const moduleSheet = workbook.Sheets['Module'];
+      const moduleData: any[] = XLSX.utils.sheet_to_json(moduleSheet);
+      
+      if (!moduleData || moduleData.length === 0) {
+        throw new Error(`Module sheet is empty in: ${excelFilePath}`);
+      }
+      
+      // Construct the start and end markers
+      const startMarker = `${moduleName}_Start`;
+      const endMarker = `${moduleName}_End`;
+      
+      // Find the start and end indices
+      let startIndex = -1;
+      let endIndex = -1;
+      
+      for (let i = 0; i < moduleData.length; i++) {
+        const rowModuleName = moduleData[i]['MODULENAME'] || moduleData[i]['ModuleName'] || moduleData[i]['moduleName'];
+        
+        if (rowModuleName && rowModuleName.trim() === startMarker) {
+          startIndex = i;
+        }
+        
+        if (rowModuleName && rowModuleName.trim() === endMarker) {
+          endIndex = i;
+          break;
+        }
+      }
+      
+      // Validate that both markers were found
+      if (startIndex === -1) {
+        const availableModules = [...new Set(moduleData.map(row => {
+          const name = row['MODULENAME'] || row['ModuleName'] || row['moduleName'];
+          return name ? name.replace(/_Start$|_End$/g, '') : null;
+        }).filter(Boolean))];
+        
+        throw new Error(
+          `Module start marker "${startMarker}" not found in Module sheet.\n` +
+          `   Available modules: ${availableModules.join(', ')}`
+        );
+      }
+      
+      if (endIndex === -1) {
+        throw new Error(`Module end marker "${endMarker}" not found in Module sheet.`);
+      }
+      
+      if (startIndex >= endIndex) {
+        throw new Error(`Module "${moduleName}" has invalid markers: Start must come before End.`);
+      }
+      
+      // Extract steps between Start and End (excluding the markers themselves)
+      const moduleSteps = moduleData.slice(startIndex + 1, endIndex);
+      
+      if (moduleSteps.length === 0) {
+        throw new Error(`Module "${moduleName}" has no steps between Start and End markers.`);
+      }
+      
+      console.log(`   Found ${moduleSteps.length} step(s) in module "${moduleName}"`);
+      
+      // Execute each step in the module
+      for (const moduleRow of moduleSteps) {
+        const moduleStep: rowStep = {
+          step: moduleRow['STEP'],
+          stepDescription: moduleRow['STEPDESCRIPTION'] || 'Module step',
+          locatorPathType: moduleRow['LOCATORPATHTYPE'],
+          locatorPath: moduleRow['LOCATORPATH'],
+          actionType: moduleRow['ACTIONTYPE'],
+          inputData: moduleRow['INPUTDATA']
+        };
+        
+        console.log(`   → Executing module step ${moduleStep.step}: ${moduleStep.stepDescription}`);
+        
+        try {
+          // Execute the action directly
+          await this.executeAction(moduleStep);
+          
+          // Record successful module step execution
+          if (this.executionSummary) {
+            this.executionSummary.recordStep(
+              this.currentSheetName,
+              moduleStep.step,
+              `[Module: ${moduleName}] ${moduleStep.stepDescription}`,
+              moduleStep.actionType || 'UNKNOWN',
+              'passed'
+            );
+          }
+          
+          // Take screenshot after each module step
+          const screenshotFileName = `Module_${moduleName}_Step_${moduleStep.step}_${moduleStep.actionType}.png`;
+          const screenshotPath = path.join(this.baseScreenshotDir, screenshotFileName);
+          await this.page.screenshot({ path: screenshotPath });
+          console.log(`   📸 Screenshot taken: ${screenshotFileName}`);
+          
+        } catch (error) {
+          // Record failed module step execution
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          if (this.executionSummary) {
+            this.executionSummary.recordStep(
+              this.currentSheetName,
+              moduleStep.step,
+              `[Module: ${moduleName}] ${moduleStep.stepDescription}`,
+              moduleStep.actionType || 'UNKNOWN',
+              'failed',
+              errorMessage
+            );
+          }
+          
+          console.error(`   ❌ Module step ${moduleStep.step} failed: ${errorMessage}`);
+          throw error; // Re-throw to fail the module
+        }
+      }
+      
+      console.log(`✅ Module "${moduleName}" completed successfully\n`);
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Module "${moduleName}" failed: ${errorMsg}`);
+      throw error;
+    }
+  }
 
   async performStep(_rowStep: rowStep) {
     const {
@@ -134,10 +280,15 @@ export class actionHandler {
     } = _rowStep;
 
     switch (actionType) {
-      // case 'GetModule': {
-      //   console.log(`✅ Step ${step} completed: Accessed module ${inputData}`);
-      //   break;
-      // }
+      //Module Execution
+      case 'GETMODULE': {
+        if (!inputData) {
+          throw new Error(`Step ${step}: GETMODULE requires a module name in INPUTDATA column`);
+        }
+        await this.getModule(inputData, this.excelFilePath);
+        console.log(`✅ Step ${step} completed: Executed module "${inputData}"`);
+        break;
+      }
 
       //Function Elements
       case 'OPENURL': {
@@ -295,6 +446,22 @@ export class actionHandler {
         await expect(locator).toBeDisabled();
         console.log(`✅ Step ${step} completed: Element is disabled.`);
         break;
+      }
+      case 'ValidateElementtobeEmpty': {
+        const locator = this.resolveLocator(this.page, locatorPathType, locatorPath);
+
+        await expect(locator).toBeEmpty();
+        console.log(`✅ Step ${step} completed: Element is empty.`);
+        break;
+      }
+
+      default: {
+        const errorMsg = `❌ Unsupported or unimplemented action type: "${actionType}"`;
+        console.error(errorMsg);
+        console.error(`   Step ${step}: ${stepDescription}`);
+        console.error(`   Available actions: OPENURL, FILL, CLICKBUTTON, WAIT, GETMODULE (not implemented), etc.`);
+        console.error(`   Please check your Excel file or implement the "${actionType}" action in actionHandler.ts\n`);
+        throw new Error(`Unsupported action type: "${actionType}" at Step ${step}`);
       }
 
     }

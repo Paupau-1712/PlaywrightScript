@@ -29,7 +29,8 @@ export default defineConfig({
     // baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    headless: false,
+    // Control headless mode via environment variable: HEADLESS=true/false
+    headless: process.env.HEADLESS === 'true' ? true : false,
     trace: 'on-first-retry',
     screenshot: 'on', // or 'only-on-failure'
   },
@@ -40,7 +41,8 @@ export default defineConfig({
       name: 'Chrome',
       use: {
         browserName: 'chromium',
-        headless: false,
+        // Control headless mode via environment variable
+        headless: process.env.HEADLESS === 'true' ? true : false,
         launchOptions: {
           slowMo: 100 // ✅ Correct place for slowMo
         },
@@ -48,29 +50,30 @@ export default defineConfig({
       }
     },
 
-    {
-      name: 'Firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        headless: false,
-        launchOptions: {
-          slowMo: 100 // ✅ Correct place for slowMo
-        },
-        trace: 'on'
-      }
-    },
+    // Uncomment Firefox and Webkit if you want to run on multiple browsers
+    // {
+    //   name: 'Firefox',
+    //   use: {
+    //     ...devices['Desktop Firefox'],
+    //     headless: process.env.HEADLESS === 'true' ? true : false,
+    //     launchOptions: {
+    //       slowMo: 100
+    //     },
+    //     trace: 'on'
+    //   }
+    // },
 
-    {
-      name: 'Webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        headless: false,
-        launchOptions: {
-          slowMo: 100 // ✅ Correct place for slowMo
-        },
-        trace: 'on'
-      }
-    },
+    // {
+    //   name: 'Webkit',
+    //   use: {
+    //     ...devices['Desktop Safari'],
+    //     headless: process.env.HEADLESS === 'true' ? true : false,
+    //     launchOptions: {
+    //       slowMo: 100
+    //     },
+    //     trace: 'on'
+    //   }
+    // },
 
     /* Test against mobile viewports. */
     // {

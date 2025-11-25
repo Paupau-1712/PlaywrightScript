@@ -32,12 +32,39 @@ PlaywrightScript/
 │       ├── actionHandler.ts            # Step execution handler
 │       ├── excelFileReader.ts          # Excel data reader
 │       ├── executionSummary.ts         # Summary generator
+│       ├── moduleHandler.ts            # Module loader
+│       ├── testConfig.ts               # Test configuration
 │       └── excelColumns.ts             # Type definitions
 ├── screenshots/                         # Auto-generated screenshots
 ├── report-summary/
 │   └── summaries/                      # Execution reports (HTML/JSON)
 └── playwright.config.ts                # Playwright configuration
 ```
+
+## ⚙️ Configuration
+
+### Test Configuration (`tests/utilities/testConfig.ts`)
+Centralized configuration for test execution. Modify this file instead of hardcoding values:
+
+```typescript
+// Excel file path
+TestConfig.EXCEL_FILE_PATH = "tests/testScript/TestTemplatev2.xlsx"
+
+// Exclude sheets starting with these prefixes
+TestConfig.EXCLUDED_SHEET_PREFIXES = ['Module', 'ActionList', '_Template']
+
+// Exclude specific sheet names
+TestConfig.EXCLUDED_SHEET_NAMES = ['', 'SampleTemplate', 'README']
+
+// Optional: Include only specific prefixes (leave empty to include all)
+TestConfig.INCLUDE_SHEET_PREFIXES = []  // e.g., ['TestCase', 'SauceDemo']
+```
+
+**How it works:**
+- All sheets are executed as test cases by default
+- Sheets matching `EXCLUDED_SHEET_PREFIXES` or `EXCLUDED_SHEET_NAMES` are skipped
+- If `INCLUDE_SHEET_PREFIXES` is set, only matching sheets are executed
+- Modules (sheets starting with `Module_`) are always excluded from test execution
 
 ## 📝 Test Structure
 
@@ -56,7 +83,48 @@ Tests are defined in `tests/testScript/TestTemplatev2.xlsx` with sheets named `T
 - **Interaction**: CLICKBUTTON, DOUBLECLICK, RIGHTCLICK, HOVER, PRESSKEY
 - **Selection**: SELECTOPTION, CHECKCheckbox, UNCHECKCheckbox, RADIOButtonSelect
 - **Validation**: ValidateElementtobeVisible, ValidateElementtobeHidden, ValidateElementtobeEnabled, ValidateElementtobeDisabled
+- **Modules**: GETMODULE (execute reusable step sequences)
 - **Other**: WAIT, UPLOADFile, TAKEFullPageScreenshot, CLOSEPAGE
+
+## 📦 Reusable Modules (GETMODULE)
+
+### What are Modules?
+Modules are reusable test step sequences stored as separate Excel sheets. Instead of repeating common steps (like login) in every test case, you create a module once and reuse it everywhere.
+
+### Creating a Module
+1. Create a new sheet in Excel starting with `Module_` (e.g., `Module_Login`)
+2. Define steps using the same columns as test cases:
+   - STEP, STEPDESCRIPTION, LOCATORPATHTYPE, LOCATORPATH, ACTIONTYPE, INPUTDATA
+3. Save the Excel file
+
+### Using a Module
+In your test case, add a step with:
+- **ACTIONTYPE**: `GETMODULE`
+- **INPUTDATA**: Module name (e.g., `Module_Login`)
+
+**Example Test Case:**
+```
+Step 1: OPENURL        → https://example.com
+Step 2: GETMODULE      → Module_Login          ← Executes Module_Login steps
+Step 3: CLICKBUTTON    → Dashboard button      ← Continues after module
+Step 4: ValidateElementtobeVisible → Welcome message
+```
+
+**Example Module (Module_Login sheet):**
+```
+Step 1: FILL           → #username → standard_user
+Step 2: FILL           → #password → secret_sauce
+Step 3: CLICKBUTTON    → button[type="submit"]
+Step 4: ValidateElementtobeVisible → .inventory_container
+```
+
+### Module Benefits
+- ✅ **DRY Principle**: Write once, use everywhere
+- ✅ **Maintainability**: Update login in one place, affects all tests
+- ✅ **Nested Modules**: Modules can call other modules (up to 5 levels)
+- ✅ **Same Actions**: All 30+ actions work identically in modules
+- ✅ **Auto-reporting**: Module steps appear in execution summaries
+- ✅ **Screenshots**: Captured for each module step
 
 ## ▶️ Running Tests
 

@@ -1,10 +1,21 @@
 {
   "name": "use_typescript2",
   "version": "1.0.0",
-  "description": "",
+  "description": "Playwright Excel-driven test automation framework",
   "main": "index.js",
-  "scripts": {},
-  "keywords": [],
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:headless": "HEADLESS=true playwright test",
+    "test:chrome": "playwright test --project=Chrome",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "clean": "rm -rf test-results playwright-report screenshots/*/",
+    "ci": "HEADLESS=true playwright test",
+    "install:browsers": "npx playwright install --with-deps chromium"
+  },
+  "keywords": ["playwright", "testing", "automation", "excel"],
   "author": "",
   "license": "ISC",
   "devDependencies": {

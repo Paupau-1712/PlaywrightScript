@@ -1,0 +1,10 @@
+node_modules/
+test-results/
+playwright-report/
+screenshots/
+report-summary/
+.git/
+.gitignore
+*.log
+*.md
+.DS_Store

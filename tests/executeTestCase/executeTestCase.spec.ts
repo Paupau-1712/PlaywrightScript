@@ -14,10 +14,9 @@ test('Execute Excel TestCases on headed chrome version 2', async ({ page }) => {
 
     // 1. Create the Excel data source instance
     const excelDataSource = new excelTestDataSourcev2(fileNamePath);
-    // 2. Get sheet names from the workbook
-    const sheetNames = excelDataSource.getSheetNames(); // ['SampleTemplate', 'TestCase_1', 'TestCase_2']
-    // filter sheet names that start with 'TestCase'
-    const filteredSheetNames = sheetNames.filter(name => name.startsWith('SauceDemo'));
+    
+    // 2. Get filtered sheet names (with validation)
+    const filteredSheetNames = excelDataSource.getFilteredSheetNames('Test');
     
     for (const sheetName of filteredSheetNames) {
         console.log(`\n📄 Running test suite: ${sheetName}`);
@@ -27,7 +26,7 @@ test('Execute Excel TestCases on headed chrome version 2', async ({ page }) => {
 
         try {
             // 3. Create per-sheet handler with execution summary
-            const stepAction = new actionHandler(page, sheetName, executionSummary);
+            const stepAction = new actionHandler(page, sheetName, executionSummary, fileNamePath);
             const testCaseReader = new readTestCaseTemplate(stepAction);
 
             // 4. Execute steps in sheet
@@ -55,4 +54,10 @@ test('Execute Excel TestCases on headed chrome version 2', async ({ page }) => {
     const htmlPath = executionSummary.saveHTMLSummary();
     console.log(`📊 HTML Summary saved to: ${htmlPath}`);
     console.log('='.repeat(80) + '\n');
+    
+    // Fail the Playwright test if any test cases failed
+    if (executionSummary.hasFailures()) {
+        const failedCount = executionSummary.getFailedCount();
+        throw new Error(`Test execution failed: ${failedCount} test case(s) failed. Check the execution summary above for details.`);
+    }
 });
