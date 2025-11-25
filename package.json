@@ -1,6 +1,6 @@
 {
   "name": "use_typescript2",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Playwright Excel-driven test automation framework",
   "main": "index.js",
   "scripts": {
