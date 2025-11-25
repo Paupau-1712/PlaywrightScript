@@ -6,6 +6,9 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 
+# Screenshots
+screenshots/
+
 # Reports
 report-summary/summaries/*.json
 report-summary/summaries/*.html
