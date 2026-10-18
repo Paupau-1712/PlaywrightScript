@@ -1,11 +1,11 @@
 pipeline {
     agent any
-    
+
     environment {
-        PATH = "/usr/local/bin:${env.PATH}"
+        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
         HEADLESS = 'true'
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -13,7 +13,7 @@ pipeline {
                 checkout scm
             }
         }
-        
+
         stage('Verify Environment') {
             steps {
                 sh '''
@@ -26,16 +26,16 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Install Dependencies') {
             steps {
                 sh '''
                     echo "Installing dependencies..."
-                    npm install
+                    npm ci
                 '''
             }
         }
-        
+
         stage('Run Tests') {
             steps {
                 sh '''
@@ -45,40 +45,19 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             echo 'Archiving test results and reports...'
-            
-            // Archive Playwright HTML report
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'playwright-report',
-                reportFiles: 'index.html',
-                reportName: 'Playwright Test Report'
-            ])
-            
-            // Archive execution summary reports
-            archiveArtifacts artifacts: 'report-summary/summaries/*.html, report-summary/summaries/*.json', 
-                             allowEmptyArchive: true
-            
-            // Archive screenshots
-            archiveArtifacts artifacts: 'screenshots/**/*.png', 
-                             allowEmptyArchive: true
-            
-            // Archive test results
-            archiveArtifacts artifacts: 'test-results/**/*', 
-                             allowEmptyArchive: true
+            archiveArtifacts artifacts: 'playwright-report/**, report-summary/summaries/*.html, report-summary/summaries/*.json, screenshots/**/*.png, test-results/**/*', allowEmptyArchive: true
         }
-        
+
         success {
-            echo '✅ All tests passed!'
+            echo 'All tests passed!'
         }
-        
+
         failure {
-            echo '❌ Tests failed! Check the reports for details.'
+            echo 'Tests failed! Check the archived reports for details.'
         }
     }
 }
