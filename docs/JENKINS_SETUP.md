@@ -203,8 +203,9 @@ stage('Run Tests') {
 ### Issue: Playwright browsers not found
 **Solution**: Add installation step:
 ```groovy
-sh 'npx playwright install --with-deps'
+sh 'npx playwright install chromium --only-shell'
 ```
+This installs Chromium's headless shell used by the Jenkins headless test run.
 
 ### Issue: Permission denied errors
 **Solution**: Ensure Jenkins user has proper permissions:
