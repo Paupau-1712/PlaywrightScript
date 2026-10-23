@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        disableConcurrentBuilds()
+    }
+
     environment {
         PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
         HEADLESS = 'true'
@@ -38,7 +42,7 @@ pipeline {
 
         stage('Install Playwright Browsers') {
             steps {
-                sh 'npx playwright install chromium'
+                sh 'npx playwright install chromium --only-shell'
             }
         }
 
